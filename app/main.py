@@ -22,3 +22,26 @@ def add_user(user: User):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="user_id already exists")
     users.append(user)
     return user
+
+#Update user
+@app.put("/api/users/{user_id}")
+def update_user(user_id: int, user: User):
+    for index, u in enumerate(users):
+        if u.user_id == user_id:
+            users[index] = user
+            return users[index]
+    raise HTTPException(status_code = status.HTTP_409_CONFLICT, detail = "user_id already exists")
+
+#Delete user
+@app.delete("/app/users/delete/{user_id}", status_code = status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int):
+    for u in users:
+        if u.user_id == user_id:
+            users.remove(u)
+            return u
+    raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "User not found")
+
+#Simple function that will always return ok
+@app.get("/health")
+def get_health():
+    return {"status": "ok"}
