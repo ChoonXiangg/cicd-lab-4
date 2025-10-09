@@ -43,5 +43,5 @@ def delete_user(user_id: int):
 
 #Simple function that will always return ok
 @app.get("/health")
-def get_health():
+def health():
     return {"status": "ok"}
