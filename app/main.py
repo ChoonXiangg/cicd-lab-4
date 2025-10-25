@@ -74,6 +74,7 @@ def get_user_projects(user_id: int, db: Session = Depends(get_db)):
     #space it out for debugging
     result = db.execute(stmt)
     rows = result.scalars().all()
+    count_rows = len(rows) #For debugging
     return rows
     #return db.execute(stmt).scalars().all()
 @app.post("/api/users/{user_id}/projects", response_model=ProjectRead, status_code=201)

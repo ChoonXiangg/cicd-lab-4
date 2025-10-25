@@ -15,14 +15,14 @@ class UserCreate(BaseModel):
     name: NameStr
     email: EmailStr
     age: AgeInt
-    student_id: StudentIdStr
+    student_id: StudentId
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: NameStr
     email: EmailStr
     age: AgeInt
-    student_id: StudentIdStr
+    student_id: StudentId
 # Optionally return users with their projects
 class ProjectRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
