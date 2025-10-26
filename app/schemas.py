@@ -23,6 +23,14 @@ class UserRead(BaseModel):
     email: EmailStr
     age: AgeInt
     student_id: StudentId
+
+#Class for partial updating user
+class UserUpdate(BaseModel):
+    name: Optional[NameStr] = None
+    email: Optional[EmailStr] = None
+    age: Optional[AgeInt] = None
+    student_id: Optional[StudentId] = None
+
 # Optionally return users with their projects
 class ProjectRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -44,6 +52,13 @@ class ProjectCreateForUser(BaseModel):
     description: Optional[DescStr] = None
 class ProjectReadWithOwner(ProjectRead):
     owner: Optional["UserRead"] = None # use selectinload(ProjectDB.owner) when querying
+
+#Class for partial updating projects
+class ProjectUpdate(BaseModel):
+    name: Optional[ProjectNameStr] = None
+    description: Optional[DescStr] = None
+    owner_id: Optional[int] = None
+
 # ---------- Courses ----------
 class CourseCreate(BaseModel):
     code: CodeStr
