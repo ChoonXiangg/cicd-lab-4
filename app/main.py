@@ -6,9 +6,9 @@ from sqlalchemy.orm import selectinload
 from .database import engine, SessionLocal
 from .models import Base, UserDB, CourseDB, ProjectDB
 from .schemas import (
-    UserCreate, UserRead,
+    UserCreate, UserRead, UserUpdate,
     CourseCreate, CourseRead,
-    ProjectCreate, ProjectRead,
+    ProjectCreate, ProjectRead, ProjectUpdate,
     ProjectReadWithOwner, ProjectCreateForUser
 )
 app = FastAPI()
@@ -59,14 +59,55 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
 def list_projects(db: Session = Depends(get_db)):
     stmt = select(ProjectDB).order_by(ProjectDB.id)
     return db.execute(stmt).scalars().all()
-@app.get("/api/projects/{project_id}"
-, response_model=ProjectReadWithOwner)
+@app.get("/api/projects/{project_id}", response_model=ProjectReadWithOwner)
 def get_project_with_owner(project_id: int, db: Session = Depends(get_db)):
     stmt = select(ProjectDB).where(ProjectDB.id == project_id).options(selectinload(ProjectDB.owner))
     proj = db.execute(stmt).scalar_one_or_none()
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
     return proj
+
+#Full replace update endpoint for project
+@app.put("/api/projects/{project_id}", response_model=ProjectRead, status_code=200)
+def full_update_project(project_id: int, payload: ProjectCreate, db: Session = Depends(get_db)):
+    project = db.get(ProjectDB, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    user = db.get(UserDB, payload.owner_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    project.name = payload.name
+    project.description = payload.description
+    project.owner_id = payload.owner_id
+    try:
+        db.commit()
+        db.refresh(project)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Project update failed")
+    return project
+
+#Partial update endpoint for project
+@app.patch("/api/projects/{project_id}", response_model=ProjectRead)
+def partial_update_project(project_id: int, payload: ProjectUpdate, db: Session = Depends(get_db)):
+    project = db.get(ProjectDB, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    update_payload = payload.model_dump(exclude_unset=True)
+    if 'owner_id' in update_payload:
+        user = db.get(UserDB, update_payload['owner_id'])
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+    for key, value in update_payload.items():
+        setattr(project, key, value)
+    try:
+        db.commit()
+        db.refresh(project)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Project update failed")
+    return project
+
 #Nested Routes
 @app.get("/api/users/{user_id}/projects", response_model=list[ProjectRead])
 def get_user_projects(user_id: int, db: Session = Depends(get_db)):
@@ -126,10 +167,37 @@ def delete_user(user_id: int, db: Session = Depends(get_db)) -> Response:
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-#To keep commit logic consistent and remove repetitive code
-def commit_or_rollback(db: Session, error_msg: str):
+#Full replace update endpoint for user
+@app.put("/api/users/{user_id}", response_model=UserRead, status_code=200)
+def full_update_user(user_id: int, payload: UserCreate, db: Session = Depends(get_db)):
+    user = db.get(UserDB, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.name = payload.name
+    user.email = payload.email
+    user.age = payload.age
+    user.student_id = payload.student_id
     try:
         db.commit()
+        db.refresh(user)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail=error_msg)
+        raise HTTPException(status_code=409, detail="Email or student ID already exists")
+    return user
+
+#Partial update endpoint for user
+@app.patch("/api/users/{user_id}", response_model=UserRead)
+def partial_update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)):
+    user = db.get(UserDB, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    update_payload = payload.model_dump(exclude_unset=True)
+    for key, value in update_payload.items():
+        setattr(user, key, value)
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Email or student ID already exists")
+    return user
